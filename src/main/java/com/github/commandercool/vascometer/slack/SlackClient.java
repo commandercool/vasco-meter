@@ -2,6 +2,8 @@ package com.github.commandercool.vascometer.slack;
 
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.commandercool.vascometer.api.JsonMap;
+import com.github.commandercool.vascometer.utils.JsonUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
@@ -10,8 +12,6 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
-import java.util.HashMap;
-import java.util.Map;
 
 @Component
 public class SlackClient {
@@ -31,9 +31,8 @@ public class SlackClient {
                 .build();
         HttpResponse<String> response = client.send(request, HttpResponse.BodyHandlers.ofString());
         System.out.println(response.body());
-        HashMap userInfo = mapper.readValue(response.body(), HashMap.class);
-        Object name = ((Map) userInfo.get("user")).get("name");
-        return name.toString();
+        JsonMap userInfo = JsonUtils.unmarshall(response.body());
+        return userInfo.getMap("user").getString("real_name");
     }
 
 }

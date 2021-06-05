@@ -1,7 +1,8 @@
 package com.github.commandercool.vascometer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.commandercool.vascometer.api.JsonMap;
 import com.github.commandercool.vascometer.slack.SlackClient;
+import com.github.commandercool.vascometer.utils.JsonUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,26 +17,26 @@ import java.util.concurrent.ConcurrentHashMap;
 @RestController
 public class MeterEndpoint {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
     private static final ConcurrentHashMap<String, Integer> vascoMeter = new ConcurrentHashMap<>();
 
     @Autowired
     private SlackClient slackClient;
 
     @RequestMapping(method = RequestMethod.POST, path = "/", consumes = "application/json", produces = "text/plain")
-    public ResponseEntity<String> processTrigger(@RequestBody Map<String, Object> request) throws IOException, InterruptedException {
-        System.out.println("Received request: " + mapper.writeValueAsString(request));
-        Object challenge = request.get("challenge");
+    public ResponseEntity<String> processTrigger(@RequestBody String json) throws IOException, InterruptedException {
+        System.out.println("Received request: " + json);
+        JsonMap request = JsonUtils.unmarshall(json);
+        String challenge = request.getString("challenge");
         if (challenge != null) {
-            return ResponseEntity.ok((String) challenge);
+            return ResponseEntity.ok(challenge);
         } else {
-            Map event = (Map) request.get("event");
-            Object reaction = event.get("reaction");
+            JsonMap event = request.getMap("event");
+            String reaction = event.getString("reaction");
             if ("vasco".equals(reaction)) {
-                String name = slackClient.getUserName(event.get("item_user").toString());
+                String name = slackClient.getUserName(event.getString("item_user"));
                 Integer val = vascoMeter.getOrDefault(name, 0);
-                Object type = event.get("type");
-                if ("reaction_removed".equals(type)) {
+                String type = event.getString("type");
+                if ("reaction_removed".equals(type) && val > 0) {
                     vascoMeter.put(name, --val);
                 } else {
                     vascoMeter.put(name, ++val);
